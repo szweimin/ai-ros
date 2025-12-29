@@ -5,6 +5,8 @@ from ..services.llm_service import LLMService
 from ..repositories.database import DatabaseRepository
 from ..services.pipeline import ROSIngestionPipeline
 from ..services.query_service import QueryService
+from ..services.runtime_context import RuntimeContextBuilder  # 新增
+from ..services.prompt_builder import RAGPromptBuilder  # 新增
 
 # 依赖项
 @lru_cache()
@@ -17,6 +19,14 @@ def get_database_repository() -> DatabaseRepository:
 
 def get_llm_service() -> LLMService:
     return LLMService()
+
+def get_runtime_context_builder() -> RuntimeContextBuilder:
+    """获取运行时上下文构建器"""
+    return RuntimeContextBuilder()
+
+def get_prompt_builder() -> RAGPromptBuilder:
+    """获取提示词构建器"""
+    return RAGPromptBuilder()
 
 def get_ingestion_pipeline(
     embedding: EmbeddingService = Depends(get_embedding_service),

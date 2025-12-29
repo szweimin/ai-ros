@@ -653,3 +653,66 @@
             类型安全：添加了完整的类型注解
             配置灵活：通过环境变量轻松切换不同嵌入服务
             性能优化：使用异步处理和批处理，提高处理效率
+    
+17  Week7 / Tue  RAG + Runtime Robot State（参数 / 状态 / 报错）
+     1 目标： 让 RAG 不仅能查“文档”，还能结合“机器人当前状态”来回答问题。
+
+     2 今天要解决的真实问题（你一定遇到过）
+        工程现场常见问题：
+        “AGV 不动了，可能原因是什么？”“当前 joint_3 超限了吗？” “为什么 ROS 节点启动失败？” “E201 报错代表什么，要怎么处理？”
+        👉 这些问题 必须结合：
+        静态知识（文档 / URDF / Topic）
+        动态状态（参数 / topic 状态 / error code）
+    
+    3 完成标准
+        ✅ API 支持 runtime_state 
+        ✅ Runtime state 进入 prompt
+        ✅ RAG 结合 error / topic 给出解释
+        ✅ 回答仍有 citation + confidence
+    4 测试  
+        4.0  python3 scripts/load_data.py   #导入数据到数据库
+        4.1 普通查询: POST /api/v1/ros/query 仅基于静态文档的查询
+            {
+            "query": "What is error E201?",
+            "top_k": 5
+            }
+        4.2运行时查询: POST /api/v1/ros/query-with-runtime
+        {
+            "query": "Why is the AGV not moving?",
+            "top_k": 5,
+            "runtime_state": {
+                "robot_id": "agv_01",
+                "errors": ["E201"],
+                "active_topics": ["/odom", "/battery"],
+                "parameters": {
+                "emergency_stop": "active",
+                "speed_limit": "0"
+                }
+            }
+            }
+        4.3 提供完整的运行时状态信息;明确描述问题现象;包含相关错误代码;指定机器人类型和上下文;设置合适的top_k值（3-10）
+           # 诊断AGV问题
+            curl -X POST http://localhost:8000/api/v1/ros/query-with-runtime \
+            -H "Content-Type: application/json" \
+            -d '{
+                "query": "AGV不动了，可能原因是什么？",
+                "top_k": 5,
+                "runtime_state": {
+                "robot_id": "agv_01",
+                "errors": ["E201"],
+                "parameters": {"emergency_stop": "active"}
+                }
+            }'
+
+            # 检查关节超限
+            curl -X POST http://localhost:8000/api/v1/ros/query-with-runtime \
+            -H "Content-Type: application/json" \
+            -d '{
+                "query": "关节超限怎么处理？",
+                "top_k": 3,
+                "runtime_state": {
+                "robot_id": "arm_01",
+                "errors": ["E301"],
+                "parameters": {"joint_position": "2.3"}
+                }
+            }'

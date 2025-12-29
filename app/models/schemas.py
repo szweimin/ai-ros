@@ -37,3 +37,16 @@ class QueryResponse(BaseModel):
     answer: str = Field(..., description="回答内容")
     sources: List[Dict[str, Any]] = Field([], description="来源信息")
     confidence: float = Field(0.0, description="置信度")
+
+
+# Runtime State 相关模型
+class RuntimeState(BaseModel):
+    robot_id: str = Field(..., description="机器人ID")
+    parameters: Optional[Dict[str, Any]] = Field(None, description="运行时参数")
+    errors: Optional[List[str]] = Field(None, description="错误代码列表")
+    active_topics: Optional[List[str]] = Field(None, description="活跃ROS话题列表")
+    
+class QueryWithRuntimeRequest(BaseModel):
+    query: str = Field(..., description="查询问题")
+    top_k: int = Field(5, description="返回结果数量")
+    runtime_state: Optional[RuntimeState] = Field(None, description="运行时状态")

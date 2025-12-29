@@ -9,12 +9,13 @@ from ...services.pipeline import ROSIngestionPipeline
 from ...services.query_service import QueryService
 from ...models.schemas import (
     ROSTopic, ROSTopicsIngestRequest, URDFIngestRequest,
-    SafetyOperationIngestRequest, QueryRequest, QueryResponse
+    SafetyOperationIngestRequest, QueryRequest, QueryResponse,
+     QueryWithRuntimeRequest, RuntimeState  
 )
+
 from ..dependencies import get_ingestion_pipeline, get_query_service
 
 router = APIRouter(prefix="/ros", tags=["ROS Documentation"])
-
 @router.post("/topics/ingest")
 async def ingest_ros_topics(
     request: ROSTopicsIngestRequest,
@@ -39,8 +40,7 @@ async def ingest_ros_topics(
             "message": f"Successfully ingested {len(request.topics)} ROS topics",
             "chunk_count": result.get("chunk_count", 0),
             "details": result
-        }
-        
+        } 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error ingesting ROS topics: {str(e)}")
 
@@ -124,7 +124,27 @@ async def query_ros_docs(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error querying documentation: {str(e)}")
-
+    
+@router.post("/query-with-runtime", response_model=QueryResponse)
+async def query_ros_docs_with_runtime(
+    request: QueryWithRuntimeRequest,
+    query_service: QueryService = Depends(get_query_service)
+) -> QueryResponse:
+    """
+    查询ROS文档知识库（带运行时状态）
+    """
+    try:
+        result = await query_service.query_with_runtime(request)
+        
+        return QueryResponse(
+            answer=result["answer"],
+            sources=result["sources"],
+            confidence=result["confidence"]
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error querying documentation with runtime: {str(e)}")
+    
 @router.get("/history")
 async def get_query_history(
     query_service: QueryService = Depends(get_query_service),

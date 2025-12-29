@@ -52,14 +52,18 @@ async def root():
         "message": "ROS Documentation System API",
         "version": "1.0.0",
         "environment": settings.environment,
-        "database": "PostgreSQL",
-        "embedding_model": settings.embedding_model,
-        "llm_model": "Ollama" if not settings.openai_api_key else "OpenAI",
+        "features": {
+            "static_knowledge": True,
+            "runtime_integration": True,  # 新增
+            "error_diagnosis": True,      # 新增
+            "rag_with_state": True        # 新增
+        },
         "endpoints": {
             "ingest_ros_topics": "POST /api/v1/ros/topics/ingest",
             "ingest_urdf": "POST /api/v1/ros/urdf/ingest",
             "ingest_safety_ops": "POST /api/v1/ros/operation/ingest",
             "query": "POST /api/v1/ros/query",
+            "query_with_runtime": "POST /api/v1/ros/query-with-runtime",  # 新增
             "query_history": "GET /api/v1/ros/history"
         }
     }

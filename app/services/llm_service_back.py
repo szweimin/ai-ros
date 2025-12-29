@@ -24,76 +24,10 @@ class LLMService:
         self.ollama_host = settings.ollama_host
         self.ollama_model = settings.ollama_model
     
-    async def generate_answer_from_prompt(self, prompt: str) -> str:
-        """
-        直接从提示词生成回答（用于RAG）
-        
-        Args:
-            prompt: 完整的提示词
-            
-        Returns:
-            生成的回答
-        """
-        if self.llm_provider == 'openai' and self.openai_client:
-            try:
-                return await self._generate_with_openai_prompt(prompt)
-            except Exception as e:
-                print(f"OpenAI generation failed, falling back to Ollama: {e}")
-                return await self._generate_with_ollama_prompt(prompt)
-        else:
-            return await self._generate_with_ollama_prompt(prompt)
-    
-    async def _generate_with_openai_prompt(self, prompt: str) -> str:
-        """使用OpenAI从提示词生成回答"""
-        try:
-            response = self.openai_client.chat.completions.create(
-                model=settings.openai_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.3,
-                max_tokens=800
-            )
-            
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            print(f"Error generating answer with OpenAI: {e}")
-            return f"I encountered an error while generating the answer. Please try again."
-    
-    async def _generate_with_ollama_prompt(self, prompt: str) -> str:
-        """使用Ollama从提示词生成回答"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.ollama_host}/api/generate",
-                    json={
-                        "model": self.ollama_model,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.3,
-                            "num_predict": 800
-                        }
-                    },
-                    timeout=90.0  # 增加超时时间
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    return data.get("response", "No response generated").strip()
-                else:
-                    print(f"Error from Ollama: {response.status_code}")
-                    return f"I cannot generate an answer right now. Error: {response.status_code}"
-        except Exception as e:
-            print(f"Error generating answer with Ollama: {e}")
-            return f"I encountered an error while generating the answer. Please try again."
-        
     async def generate_answer(self, query: str, context: str) -> str:
         """
-        基于上下文生成回答   
+        基于上下文生成回答
+        
         Args:
             query: 用户查询
             context: 相关上下文
@@ -110,6 +44,8 @@ class LLMService:
         else:
             # 默认使用Ollama
             return await self._generate_with_ollama(query, context)
+        
+
     
     async def _generate_with_openai(self, query: str, context: str) -> str:
         """使用OpenAI生成回答"""
@@ -147,10 +83,16 @@ class LLMService:
                     f"{self.ollama_host}/api/generate",
                     json={
                         "model": self.ollama_model,
-                        "prompt": f"""You are a ROS (Robot Operating System) documentation assistant.Context:{context}
-                        Based on the context above, answer this question: {query}
-                        If the context doesn't contain relevant information, say "I don't have enough information about that."
-                        Answer:""",
+                        "prompt": f"""You are a ROS (Robot Operating System) documentation assistant.
+
+Context:
+{context}
+
+Based on the context above, answer this question: {query}
+
+If the context doesn't contain relevant information, say "I don't have enough information about that."
+
+Answer:""",
                         "stream": False,
                         "options": {
                             "temperature": 0.3,
@@ -179,7 +121,11 @@ class LLMService:
             return combined_context
         
         # 如果上下文太多，使用LLM进行摘要
-        summary_prompt = f"""Please summarize the following ROS documentation contexts into a concise overview:{combined_context}Summary:"""
+        summary_prompt = f"""Please summarize the following ROS documentation contexts into a concise overview:
+
+{combined_context}
+
+Summary:"""
         
         if self.use_openai:
             try:
