@@ -565,6 +565,7 @@
 一 安装和运行
     1   安装模块 
        cd ai-ros
+       uv venv --python 3.11   命令会在项目目录下创建虚拟环境（通常是 .venv 文件夹）并安装python3.11
        source .venv/bin/activate
        uv pip install -r requirements.txt
     2  创建数据表（ros_document_chunks）
