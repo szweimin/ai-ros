@@ -1,9 +1,13 @@
+"""
+更新主路由以包含诊断API
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
 
 from .api.v1.ros import router as ros_router
+from .api.v1.diagnostic_api import router as diagnostic_router
 from .core.config import settings
 from .repositories.database import DatabaseRepository
 from .api.dependencies import get_embedding_service, get_diagnostic_service
@@ -27,8 +31,9 @@ async def lifespan(app: FastAPI):
     # 预热诊断服务
     try:
         print("Loading diagnostic service...")
-        diag_service = get_diagnostic_service()
-        print(f"Diagnostic service loaded with {len(diag_service.get_available_error_codes())} error codes")
+        diagnostic_service = get_diagnostic_service()
+        error_count = len(diagnostic_service.get_available_error_codes())
+        print(f"Diagnostic service loaded with {error_count} error codes")
     except Exception as e:
         print(f"Warning: failed to load diagnostic service: {e}")
     
@@ -53,14 +58,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(ros_router, prefix="/api/v1")
-
-# 注册诊断路由
-try:
-    from .api.v1.diagnostic_api import router as diagnostic_router
-    app.include_router(diagnostic_router, prefix="/api/v1")
-    print("Diagnostic API routes registered")
-except ImportError as e:
-    print(f"Warning: Diagnostic API not available: {e}")
+app.include_router(diagnostic_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

@@ -7,7 +7,9 @@ from ..services.embedding_service import EmbeddingService
 from ..services.llm_service import LLMService
 from ..repositories.database import DatabaseRepository
 from ..services.pipeline import ROSIngestionPipeline
-from ..services.query_service import QueryService
+from ..services.query_service_with_diagnosis import QueryService
+from ..services.runtime_context import RuntimeContextBuilder
+from ..services.prompt_builder_with_diagnosis import RAGPromptBuilder
 from ..services.diagnostic_service import DiagnosticService
 
 # 依赖项
@@ -21,6 +23,12 @@ def get_database_repository() -> DatabaseRepository:
 
 def get_llm_service() -> LLMService:
     return LLMService()
+
+def get_runtime_context_builder() -> RuntimeContextBuilder:
+    return RuntimeContextBuilder()
+
+def get_prompt_builder() -> RAGPromptBuilder:
+    return RAGPromptBuilder()
 
 def get_diagnostic_service() -> DiagnosticService:
     return DiagnosticService()

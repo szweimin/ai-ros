@@ -561,7 +561,7 @@
         → API 服务化
         → Docker Compose 部署
         
-16  week7/mon 把 ROS 的“工程知识”变成 RAG 可用的结构化知识。    
+16  week7/mon 把 ROS 的“工程知识”变成 RAG 可用的结构化知识。 (AI-ROS)   
 一 安装和运行
     1   安装模块 
        cd ai-ros
@@ -673,10 +673,13 @@
     4 测试  
         4.0  python3 scripts/load_data.py   #导入数据到数据库
         4.1 普通查询: POST /api/v1/ros/query 仅基于静态文档的查询
-            {
+          
+            curl -X POST "http://localhost:8000/api/v1/ros/query" \
+            -H "Content-Type: application/json" \
+            -d '{
             "query": "What is error E201?",
             "top_k": 5
-            }
+            }'
         4.2运行时查询: POST /api/v1/ros/query-with-runtime
         {
             "query": "Why is the AGV not moving?",
@@ -717,3 +720,53 @@
                 "parameters": {"joint_position": "2.3"}
                 }
             }'
+
+18  Week7 / Wed  RAG + Fault Diagnosis Tree（工程逻辑 × AI）
+     18.1 目标 
+        让 AI 不只是回答“是什么”，而是能按工程逻辑给出“可能原因 + 排查顺序”。工程逻辑如下树状
+         
+     18.2 二、设计目标（工程优先，AI 辅助）
+        Fault Tree 用 结构化 JSON
+        Error E201
+                    ├─ Safety laser triggered
+                    ├─ Emergency stop pressed
+                    ├─ Safety PLC not ready
+        AI 只负责：结合 runtime state，结合文档 context，给出 最可能的路径
+    18.3  完成标准（Week7 / Wed）
+        ✅ Fault Tree 用结构化数据
+        ✅ DiagnosticService 可独立测试
+        ✅ RAG 输出包含排查步骤
+        ✅ AI 不“猜原因”，而是“走树”
+    18.4 测试
+        测试1: 带错误诊断的查询"
+        curl -X POST http://localhost:8000/api/v1/ros/query-with-runtime \
+        -H "Content-Type: application/json" \
+        -d '{
+            "query": "机器人安全停止了怎么办",
+            "top_k": 3,
+            "runtime_state": {
+            "robot_id": "test_robot",
+            "errors": ["E201"]
+            }
+        }' 
+        测试2: 诊断分析API"
+        curl -X POST http://localhost:8000/api/v1/diagnostics/analyze \
+        -H "Content-Type: application/json" \
+        -d '{
+            "error_codes": ["E201"],
+            "runtime_state": {
+            "robot_id": "test_robot",
+            "errors": ["E201"],
+            "active_topics": ["/scan", "/cmd_vel"],
+            "parameters": {"emergency_stop": true}
+            },
+            "include_detailed_analysis": true
+        }' 
+        测试3: 基础查询功能"
+        curl -X POST http://localhost:8000/api/v1/ros/query \
+        -H "Content-Type: application/json" \
+        -d '{
+            "query": "什么是ROS安全系统",
+            "top_k": 2
+        }'
+      
