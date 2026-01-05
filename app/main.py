@@ -1,48 +1,21 @@
+import sys
+import os
+# 添加项目根目录到 Python 路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-from contextlib import asynccontextmanager
-
-from .api.v1.ros import router as ros_router
-from .core.config import settings
-from .repositories.database import DatabaseRepository
-from .api.dependencies import get_embedding_service, get_diagnostic_service
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    # 启动时初始化数据库
-    db_repo = DatabaseRepository()
-    await db_repo.init_db()
-    print("Database initialized successfully")
-    
-    # 预热嵌入模型
-    try:
-        print("Preloading embedding service...")
-        get_embedding_service()
-        print("Embedding service preloaded")
-    except Exception as e:
-        print(f"Warning: failed to preload embedding service: {e}")
-    
-    # 预热诊断服务
-    try:
-        print("Loading diagnostic service...")
-        diag_service = get_diagnostic_service()
-        print(f"Diagnostic service loaded with {len(diag_service.get_available_error_codes())} error codes")
-    except Exception as e:
-        print(f"Warning: failed to load diagnostic service: {e}")
-    
-    yield
-    
-    # 关闭时清理资源
-    print("Shutting down...")
+from app.api.v1.router import router as api_router
+from app.core.config import settings
+from app.core.lifespan import lifespan
 
 app = FastAPI(
-    title=settings.app_name + " with Diagnostics",
-    lifespan=lifespan
+    title="ROS Documentation System with Fault Diagnosis",
+    description="ROS 文档系统与故障诊断",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
-# 添加CORS中间件
+# 添加 CORS 中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -51,45 +24,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
-app.include_router(ros_router, prefix="/api/v1")
-
-# 注册诊断路由
-try:
-    from .api.v1.diagnostic_api import router as diagnostic_router
-    app.include_router(diagnostic_router, prefix="/api/v1")
-    print("Diagnostic API routes registered")
-except ImportError as e:
-    print(f"Warning: Diagnostic API not available: {e}")
-
-@app.get("/")
-async def root():
-    return {
-        "message": "ROS Documentation System with Fault Diagnosis",
-        "version": "2.0.0",
-        "environment": settings.environment,
-        "features": {
-            "static_knowledge": True,
-            "runtime_integration": True,
-            "fault_diagnosis_trees": True,
-            "engineering_diagnostics": True
-        },
-        "endpoints": {
-            "ingest_ros_topics": "POST /api/v1/ros/topics/ingest",
-            "ingest_urdf": "POST /api/v1/ros/urdf/ingest",
-            "ingest_safety_ops": "POST /api/v1/ros/operation/ingest",
-            "query": "POST /api/v1/ros/query",
-            "query_with_runtime": "POST /api/v1/ros/query-with-runtime",
-            "diagnostic_analyze": "POST /api/v1/diagnostics/analyze",
-            "available_diagnoses": "GET /api/v1/diagnostics/available",
-            "get_fault_tree": "GET /api/v1/diagnostics/tree/{error_code}",
-            "query_history": "GET /api/v1/ros/history"
-        }
-    }
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+# 注册路由 - 使用正确的 prefix
+app.include_router(api_router, prefix="/api/v1")
 
 if __name__ == "__main__":
+    import uvicorn
+    
+    # 调试：打印所有路由
+    print("\n=== 注册的路由 ===")
+    for route in app.routes:
+        if hasattr(route, "path"):
+            print(f"Path: {route.path}")
+    
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

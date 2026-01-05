@@ -10,7 +10,7 @@ from app.services.query_service import QueryService
 from app.models.schemas import RuntimeState
 from app.api.dependencies import get_query_service, get_diagnostic_service
 
-router = APIRouter(prefix="/diagnostics", tags=["Diagnostics"])
+router = APIRouter(tags=["Diagnostics"])
 
 class DiagnosticRequest(BaseModel):
     """诊断请求"""

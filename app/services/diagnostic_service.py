@@ -120,8 +120,69 @@ class DiagnosticService:
         
         return diagnosis
     
+    # async def diagnose_multiple_errors(self, error_codes: List[str], 
+    #                                   runtime_state: Optional[RuntimeState] = None) -> Dict[str, Any]:
+    #     """
+    #     诊断多个错误代码
+        
+    #     Args:
+    #         error_codes: 错误代码列表
+    #         runtime_state: 运行时状态
+            
+    #     Returns:
+    #         综合诊断结果
+    #     """
+    #     if not error_codes:
+    #         return {
+    #             "status": "no_errors",
+    #             "message": "No error codes provided for diagnosis"
+    #         }
+        
+    #     # 诊断每个错误
+    #     diagnoses = []
+    #     for error_code in error_codes:
+    #         diagnosis = await self.diagnose_single_error(error_code, runtime_state)
+    #         diagnoses.append(diagnosis)
+        
+    #     # 确定主要错误（按严重程度）
+    #     severity_order = {"high": 3, "medium": 2, "low": 1}
+    #     primary_diagnosis = max(diagnoses, key=lambda d: severity_order.get(d.get("severity", "low"), 0))
+        
+    #     # 综合所有诊断信息
+    #     combined_causes = []
+    #     for diagnosis in diagnoses:
+    #         if "possible_causes" in diagnosis:
+    #             combined_causes.extend(diagnosis["possible_causes"])
+        
+    #     # 去重并合并概率
+    #     unique_causes = {}
+    #     for cause in combined_causes:
+    #         cause_id = cause["id"]
+    #         if cause_id not in unique_causes:
+    #             unique_causes[cause_id] = cause
+    #         else:
+    #             # 如果已经存在，取较高的概率
+    #             unique_causes[cause_id]["adjusted_probability"] = max(
+    #                 unique_causes[cause_id]["adjusted_probability"],
+    #                 cause["adjusted_probability"]
+    #             )
+        
+    #     # 按概率排序
+    #     sorted_causes = sorted(unique_causes.values(), 
+    #                           key=lambda x: x["adjusted_probability"], 
+    #                           reverse=True)
+        
+    #     return {
+    #         "status": "diagnosed",
+    #         "error_count": len(error_codes),
+    #         "primary_error": primary_diagnosis["error_code"],
+    #         "primary_severity": primary_diagnosis["severity"],
+    #         "combined_causes": sorted_causes[:5],  # 只取前5个最可能的原因
+    #         "individual_diagnoses": diagnoses,
+    #         "summary": self._generate_diagnosis_summary(diagnoses, runtime_state)
+    #     }
     async def diagnose_multiple_errors(self, error_codes: List[str], 
-                                      runtime_state: Optional[RuntimeState] = None) -> Dict[str, Any]:
+                                  runtime_state: Optional[RuntimeState] = None) -> Dict[str, Any]:
         """
         诊断多个错误代码
         
@@ -144,9 +205,15 @@ class DiagnosticService:
             diagnosis = await self.diagnose_single_error(error_code, runtime_state)
             diagnoses.append(diagnosis)
         
-        # 确定主要错误（按严重程度）
-        severity_order = {"high": 3, "medium": 2, "low": 1}
-        primary_diagnosis = max(diagnoses, key=lambda d: severity_order.get(d.get("severity", "low"), 0))
+        # 确定主要错误（按严重程度）- 安全地处理缺失的 severity
+        severity_order = {"high": 3, "medium": 2, "low": 1, "unknown": 0}
+        
+        # 确保每个诊断都有 severity 字段
+        for diagnosis in diagnoses:
+            if "severity" not in diagnosis:
+                diagnosis["severity"] = "unknown"
+        
+        primary_diagnosis = max(diagnoses, key=lambda d: severity_order.get(d.get("severity", "unknown"), 0))
         
         # 综合所有诊断信息
         combined_causes = []
@@ -169,14 +236,14 @@ class DiagnosticService:
         
         # 按概率排序
         sorted_causes = sorted(unique_causes.values(), 
-                              key=lambda x: x["adjusted_probability"], 
-                              reverse=True)
+                            key=lambda x: x["adjusted_probability"], 
+                            reverse=True)
         
         return {
             "status": "diagnosed",
             "error_count": len(error_codes),
-            "primary_error": primary_diagnosis["error_code"],
-            "primary_severity": primary_diagnosis["severity"],
+            "primary_error": primary_diagnosis.get("error_code", "unknown"),
+            "primary_severity": primary_diagnosis.get("severity", "unknown"),  # 使用 get 方法避免 KeyError
             "combined_causes": sorted_causes[:5],  # 只取前5个最可能的原因
             "individual_diagnoses": diagnoses,
             "summary": self._generate_diagnosis_summary(diagnoses, runtime_state)
@@ -256,8 +323,54 @@ class DiagnosticService:
         
         return "\n".join(parts)
     
+    # async def generate_diagnosis_plan(self, error_codes: List[str], 
+    #                                  runtime_state: RuntimeState) -> Dict[str, Any]:
+    #     """
+    #     生成详细的诊断计划
+        
+    #     Args:
+    #         error_codes: 错误代码列表
+    #         runtime_state: 运行时状态
+            
+    #     Returns:
+    #         诊断计划
+    #     """
+    #     # 获取诊断结果
+    #     diagnosis = await self.diagnose_multiple_errors(error_codes, runtime_state)
+        
+    #     if diagnosis["status"] != "diagnosed":
+    #         return diagnosis
+        
+    #     # 生成检查步骤
+    #     check_steps = []
+    #     for cause in diagnosis.get("combined_causes", [])[:5]:
+    #         check_steps.append({
+    #             "id": cause["id"],
+    #             "description": cause["description"],
+    #             "action": cause["check"],
+    #             "priority": "HIGH" if cause["adjusted_probability"] > 0.6 else "MEDIUM",
+    #             "estimated_time": "5-10 minutes"
+    #         })
+        
+    #     # 生成恢复计划
+    #     recovery_plan = []
+    #     for diag in diagnosis.get("individual_diagnoses", []):
+    #         if diag.get("recovery_steps"):
+    #             recovery_plan.extend(diag["recovery_steps"])
+        
+    #     # 去重恢复步骤
+    #     unique_recovery_steps = list(dict.fromkeys(recovery_plan))
+        
+    #     return {
+    #         "status": "plan_generated",
+    #         "diagnosis_summary": diagnosis["summary"],
+    #         "check_steps": check_steps,
+    #         "recovery_plan": unique_recovery_steps[:5],
+    #         "safety_notes": self._generate_safety_notes(diagnosis),
+    #         "estimated_resolution_time": self._estimate_resolution_time(diagnosis)
+    #     }
     async def generate_diagnosis_plan(self, error_codes: List[str], 
-                                     runtime_state: RuntimeState) -> Dict[str, Any]:
+                                 runtime_state: RuntimeState) -> Dict[str, Any]:
         """
         生成详细的诊断计划
         
@@ -268,40 +381,69 @@ class DiagnosticService:
         Returns:
             诊断计划
         """
-        # 获取诊断结果
-        diagnosis = await self.diagnose_multiple_errors(error_codes, runtime_state)
-        
-        if diagnosis["status"] != "diagnosed":
-            return diagnosis
-        
-        # 生成检查步骤
-        check_steps = []
-        for cause in diagnosis.get("combined_causes", [])[:5]:
-            check_steps.append({
-                "id": cause["id"],
-                "description": cause["description"],
-                "action": cause["check"],
-                "priority": "HIGH" if cause["adjusted_probability"] > 0.6 else "MEDIUM",
-                "estimated_time": "5-10 minutes"
-            })
-        
-        # 生成恢复计划
-        recovery_plan = []
-        for diag in diagnosis.get("individual_diagnoses", []):
-            if diag.get("recovery_steps"):
-                recovery_plan.extend(diag["recovery_steps"])
-        
-        # 去重恢复步骤
-        unique_recovery_steps = list(dict.fromkeys(recovery_plan))
-        
-        return {
-            "status": "plan_generated",
-            "diagnosis_summary": diagnosis["summary"],
-            "check_steps": check_steps,
-            "recovery_plan": unique_recovery_steps[:5],
-            "safety_notes": self._generate_safety_notes(diagnosis),
-            "estimated_resolution_time": self._estimate_resolution_time(diagnosis)
-        }
+        try:
+            # 获取诊断结果
+            diagnosis = await self.diagnose_multiple_errors(error_codes, runtime_state)
+            
+            if diagnosis["status"] != "diagnosed":
+                return {
+                    "status": "error",
+                    "message": diagnosis.get("message", "Diagnosis failed"),
+                    "error_codes": error_codes,
+                    "diagnosis_plan": None,
+                    "detailed_analysis": None,
+                    "timestamp": 0.0
+                }
+            
+            # 生成检查步骤
+            check_steps = []
+            for cause in diagnosis.get("combined_causes", [])[:5]:
+                check_steps.append({
+                    "id": cause["id"],
+                    "description": cause["description"],
+                    "action": cause["check"],
+                    "priority": "HIGH" if cause["adjusted_probability"] > 0.6 else "MEDIUM",
+                    "estimated_time": "5-10 minutes"
+                })
+            
+            # 生成恢复计划
+            recovery_plan = []
+            for diag in diagnosis.get("individual_diagnoses", []):
+                if diag.get("recovery_steps"):
+                    recovery_plan.extend(diag["recovery_steps"])
+            
+            # 去重恢复步骤
+            unique_recovery_steps = list(dict.fromkeys(recovery_plan))
+            
+            # 生成详细分析
+            detailed_analysis = diagnosis.get("summary", "No detailed analysis available.")
+            
+            return {
+                "status": "plan_generated",
+                "error_codes": error_codes,
+                "diagnosis_plan": {
+                    "check_steps": check_steps,
+                    "recovery_plan": unique_recovery_steps[:5],
+                    "safety_notes": self._generate_safety_notes(diagnosis),
+                    "estimated_resolution_time": self._estimate_resolution_time(diagnosis)
+                },
+                "detailed_analysis": detailed_analysis,
+                "timestamp": 0.0  # 如果需要可以添加实际时间戳
+            }
+            
+        except Exception as e:
+            print(f"Error generating diagnosis plan: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
+            return {
+                "status": "error",
+                "message": f"Failed to generate diagnosis plan: {str(e)}",
+                "error_codes": error_codes,
+                "diagnosis_plan": None,
+                "detailed_analysis": None,
+                "timestamp": 0.0
+            }
     
     def _generate_safety_notes(self, diagnosis: Dict[str, Any]) -> List[str]:
         """生成安全注意事项"""

@@ -769,4 +769,21 @@
             "query": "什么是ROS安全系统",
             "top_k": 2
         }'
-      
+    
+    19 Week7 / Thu Multi-Robot / Fleet-Level Knowledge & Diagnosis
+        19.1目标   
+           让系统能跨机器人、跨型号、跨状态做对比与诊断。这是 AGV / AMR / 机器人公司真实需要的能力。
+    
+        19.2工业场景需求：
+           同一型号20台AGV，其中 3 台频繁报 E201，固件版本不一致。工程师想知道：是单机问题？设计缺陷？现场环境问题？
+       
+        19.3 完成标准
+            ✅ Fleet schema 定义完成
+            ✅ FleetDiagnosticService 可测试
+            ✅ RAG 能区分单机 / 系统问题
+            ✅ 回答体现统计与工程逻辑
+        
+        19.4 测试
+          python3 test_fleet_example.py , python3  test_fleet_simple.py
+          python3 scripts/test_fleet_scenarios.py  python3 scripts/test_fleet_diagnostics_api.py
+        

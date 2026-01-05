@@ -2,20 +2,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any, List
 import uuid
 
-from ...services.parsers.topic_parser import TopicParser
-from ...services.parsers.urdf_parser import URDFParser
-from ...services.parsers.safety_parser import SafetyParser
-from ...services.pipeline import ROSIngestionPipeline
-from ...services.query_service import QueryService
-from ...models.schemas import (
+# 修正导入路径 - 使用绝对导入
+from app.services.parsers.topic_parser import TopicParser
+from app.services.parsers.urdf_parser import URDFParser
+from app.services.parsers.safety_parser import SafetyParser
+from app.services.pipeline import ROSIngestionPipeline
+from app.services.query_service import QueryService
+from app.models.schemas import (
     ROSTopic, ROSTopicsIngestRequest, URDFIngestRequest,
     SafetyOperationIngestRequest, QueryRequest, QueryResponse,
      QueryWithRuntimeRequest, RuntimeState  
 )
 
-from ..dependencies import get_ingestion_pipeline, get_query_service
+from app.api.dependencies import get_ingestion_pipeline, get_query_service
 
-router = APIRouter(prefix="/ros", tags=["ROS Documentation"])
+router = APIRouter(tags=["ROS Documentation"])
+
+# 后面的代码保持不变...
 @router.post("/topics/ingest")
 async def ingest_ros_topics(
     request: ROSTopicsIngestRequest,

@@ -9,7 +9,7 @@ from ..repositories.database import DatabaseRepository
 from ..services.pipeline import ROSIngestionPipeline
 from ..services.query_service import QueryService
 from ..services.diagnostic_service import DiagnosticService
-
+from app.services.fleet_diagnostic_service import FleetDiagnosticService
 # 依赖项
 @lru_cache()
 def get_embedding_service() -> EmbeddingService:
@@ -37,3 +37,10 @@ def get_ingestion_pipeline(
     db_repo: DatabaseRepository = Depends(get_database_repository)
 ) -> ROSIngestionPipeline:
     return ROSIngestionPipeline(embedding, db_repo)
+
+def get_fleet_diagnostic_service() -> FleetDiagnosticService:
+    """
+    获取车队诊断服务实例
+    """
+    diagnostic_service = get_diagnostic_service()
+    return FleetDiagnosticService(diagnostic_service)
