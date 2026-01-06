@@ -786,4 +786,83 @@
         19.4 测试
           python3 test_fleet_example.py , python3  test_fleet_simple.py
           python3 scripts/test_fleet_scenarios.py  python3 scripts/test_fleet_diagnostics_api.py
-        
+    
+    20  Week8/Mon Runtime Integration 架构（ROS / OPC-UA / Edge → AI）
+        20.1  目标
+            把“真实机器人运行状态”接入你现有的 RAG 系统，但保持工程边界清晰
+            [ Robot / PLC / ROS2 ]
+                    |
+            (Edge Adapter)
+                    |
+            Runtime Snapshot API
+                    |
+            AI Knowledge & Diagnosis System
+                    |
+            Engineer / Dashboard / Ticket System
+
+        20.2  完成标准
+            ✅ RuntimeSnapshot schema 完成
+            ✅ Snapshot API 可接收数据
+            ✅ Snapshot 能转成 RAG context
+            ✅ 不破坏现有 RAG 架构
+
+        20.3 测试所有端点
+            测试 1：根路径
+            GET http://localhost:8000/api/v1/snapshot-ingestion/
+
+            测试 2：健康检查
+            GET http://localhost:8000/api/v1/snapshot-ingestion/health
+            Header: X-API-Key: edge-adapter-ros-key
+
+            测试 3：发送快照
+            POST http://localhost:8000/api/v1/snapshot-ingestion/snapshot
+            Header: X-API-Key: edge-adapter-ros-key
+            Body (JSON)
+            {
+            "robot_id": "agv_01",
+            "model": "A1",
+            "firmware": "v2.1",
+            "timestamp": "2026-01-05T10:12:00Z",
+            "errors": ["E201"],
+            "joint_states": {"wheel_left": 0.0, "wheel_right": 0.0},
+            "active_topics": ["/scan", "/odom"]
+            }
+
+            测试 4：批量发送
+            POST http://localhost:8000/api/v1/snapshot-ingestion/batch
+            Header: X-API-Key: edge-adapter-ros-key
+            Body (JSON):
+            {
+            "snapshots": [
+                {
+                "robot_id": "agv_01",
+                "model": "A1",
+                "firmware": "v2.1",
+                "timestamp": "2026-01-05T10:12:00Z",
+                "errors": ["E201"],
+                "joint_states": {"wheel_left": 0.0, "wheel_right": 0.0},
+                "active_topics": ["/scan", "/odom"]
+                },
+                {
+                "robot_id": "agv_02",
+                "model": "B2",
+                "firmware": "v1.5",
+                "timestamp": "2026-01-05T10:13:00Z",
+                "errors": [],
+                "joint_states": {"wheel_left": 1.5, "wheel_right": 1.5},
+                "active_topics": ["/scan", "/odom", "/cmd_vel"]
+                }
+            ]
+            }
+
+            测试 5：获取历史
+            GET http://localhost:8000/api/v1/snapshot-ingestion/history/agv_01?limit=5
+            Header: X-API-Key: edge-adapter-ros-key
+
+            测试 6：统计信息
+            GET http://localhost:8000/api/v1/snapshot-ingestion/stats
+            Header: X-API-Key: edge-adapter-ros-key
+            
+            测试 7：机器人列表
+            GET http://localhost:8000/api/v1/snapshot-ingestion/robots
+            Header: X-API-Key: edge-adapter-ros-key
